@@ -1,65 +1,167 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { DocumentNote, PageContent } from '../types';
 
-// Configure PDF.js worker
+// Configure PDF.js worker to use local public asset with fallback
 if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+  } catch (e) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
 }
 
 /**
- * Extracts text from an uploaded PDF file while preserving page boundaries and line breaks.
+ * Extracts raw printable text from a binary buffer when standard PDF parsing encounters corrupted fonts or worker errors.
+ */
+function extractRawTextFromBuffer(arrayBuffer: ArrayBuffer): string {
+  try {
+    const bytes = new Uint8Array(arrayBuffer);
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    const rawString = decoder.decode(bytes);
+
+    // 1. Try finding parenthesized text strings in PDF stream: (Hello World) Tj or '
+    const textMatches = rawString.match(/\(([^()]{2,})\)\s*(?:Tj|'|")/g);
+    if (textMatches && textMatches.length > 5) {
+      const cleaned = textMatches
+        .map(m => m.replace(/^\(|\)\s*(?:Tj|'|")$/g, '').trim())
+        .filter(t => t.length > 1 && !/^\\[0-9]{3}/.test(t));
+      if (cleaned.length > 5) {
+        return cleaned.join(' ');
+      }
+    }
+
+    // 2. Fallback: extract readable sentences and word tokens
+    const words = rawString.match(/[A-Za-z0-9_\-\.\:\/]{3,}/g) || [];
+    const filterList = new Set(['obj', 'endobj', 'stream', 'endstream', 'xref', 'trailer', 'startxref', 'Catalog', 'Pages', 'Type', 'Font', 'Encoding', 'MediaBox']);
+    const meaningfulWords = words.filter(w => !filterList.has(w) && !/^[0-9A-Fa-f]{6,}$/.test(w));
+
+    return meaningfulWords.slice(0, 3500).join(' ');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Splits plain text into structured virtual pages of ~300 words each.
+ */
+export function chunkTextIntoPages(text: string, wordsPerPage: number = 300): PageContent[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return [{
+      pageNumber: 1,
+      text: text.trim(),
+      charCount: text.length,
+      wordCount: 0
+    }];
+  }
+
+  const pages: PageContent[] = [];
+  for (let i = 0; i < words.length; i += wordsPerPage) {
+    const pageWords = words.slice(i, i + wordsPerPage);
+    const pageText = pageWords.join(' ');
+    pages.push({
+      pageNumber: pages.length + 1,
+      text: pageText,
+      charCount: pageText.length,
+      wordCount: pageWords.length
+    });
+  }
+
+  return pages;
+}
+
+/**
+ * Extracts text from an uploaded PDF, TXT, or MD file with resilient fallbacks.
  */
 export async function extractTextFromPdf(file: File): Promise<{
   title: string;
   pages: PageContent[];
   fullText: string;
 }> {
+  const cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+
+  // 1. If uploaded file is plain text or Markdown, read directly without PDF.js
+  if (file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.md')) {
+    const rawText = await file.text();
+    const pages = chunkTextIntoPages(rawText);
+    return {
+      title: cleanTitle,
+      pages,
+      fullText: rawText.trim()
+    };
+  }
+
+  // 2. PDF extraction with multi-tiered fallback
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-    const pdfDoc = await loadingTask.promise;
-    const numPages = pdfDoc.numPages;
-
-    if (numPages === 0) {
-      throw new Error('The uploaded PDF appears to be empty.');
-    }
-
-    const pages: PageContent[] = [];
+    let pages: PageContent[] = [];
     let aggregatedText = '';
 
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdfDoc.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      
-      // Combine text items preserving spacing
-      let lastY: number | null = null;
-      let pageText = '';
-
-      for (const item of textContent.items as any[]) {
-        if (!item.str) continue;
-        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
-          pageText += '\n';
-        } else if (pageText.length > 0 && !pageText.endsWith(' ') && !pageText.endsWith('\n')) {
-          pageText += ' ';
-        }
-        pageText += item.str;
-        lastY = item.transform[5];
-      }
-
-      pageText = pageText.trim();
-      const wordCount = pageText ? pageText.split(/\s+/).filter(Boolean).length : 0;
-
-      pages.push({
-        pageNumber: pageNum,
-        text: pageText,
-        charCount: pageText.length,
-        wordCount,
+    try {
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        disableFontFace: true,
+        stopAtErrors: false
       });
+      const pdfDoc = await loadingTask.promise;
+      const numPages = pdfDoc.numPages;
 
-      aggregatedText += `\n\n--- Page ${pageNum} ---\n` + pageText;
+      if (numPages > 0) {
+        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+          try {
+            const page = await pdfDoc.getPage(pageNum);
+            const textContent = await page.getTextContent();
+            
+            let lastY: number | null = null;
+            let pageText = '';
+
+            for (const item of textContent.items as any[]) {
+              if (!item.str) continue;
+              if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+                pageText += '\n';
+              } else if (pageText.length > 0 && !pageText.endsWith(' ') && !pageText.endsWith('\n')) {
+                pageText += ' ';
+              }
+              pageText += item.str;
+              lastY = item.transform[5];
+            }
+
+            pageText = pageText.trim();
+            const wordCount = pageText ? pageText.split(/\s+/).filter(Boolean).length : 0;
+
+            if (pageText) {
+              pages.push({
+                pageNumber: pageNum,
+                text: pageText,
+                charCount: pageText.length,
+                wordCount,
+              });
+              aggregatedText += `\n\n--- Page ${pageNum} ---\n` + pageText;
+            }
+          } catch (pageErr) {
+            console.warn(`Warning parsing page ${pageNum}, continuing with remaining pages:`, pageErr);
+          }
+        }
+      }
+    } catch (pdfjsErr) {
+      console.warn('PDF.js worker extraction encountered issue, attempting binary stream extractor:', pdfjsErr);
     }
 
-    const cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+    // 3. Fallback: If PDF.js extracted 0 pages or total words is under 20, use raw buffer text extractor
+    const totalWords = pages.reduce((acc, p) => acc + p.wordCount, 0);
+    if (pages.length === 0 || totalWords < 20) {
+      const rawRecovered = extractRawTextFromBuffer(arrayBuffer);
+      if (rawRecovered && rawRecovered.split(/\s+/).length >= 10) {
+        pages = chunkTextIntoPages(rawRecovered);
+        aggregatedText = rawRecovered;
+      }
+    }
+
+    if (pages.length === 0) {
+      throw new Error('Could not extract readable text from this PDF. It may contain scanned images or is password-protected. Try pasting the text directly or select one of the study modules.');
+    }
 
     return {
       title: cleanTitle,
@@ -67,8 +169,8 @@ export async function extractTextFromPdf(file: File): Promise<{
       fullText: aggregatedText.trim(),
     };
   } catch (err: any) {
-    console.error('PDF parsing error:', err);
-    throw new Error(err.message || 'Could not parse the PDF file. Please ensure it is a valid text-based PDF.');
+    console.error('File parsing error:', err);
+    throw new Error(err.message || 'Could not parse the file. Please ensure it contains selectable text, or use Paste Text mode.');
   }
 }
 
