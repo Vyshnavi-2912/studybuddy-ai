@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0A0E1A;
+  color: #F8FAFC;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.16) 0px, transparent 45%),
+    radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.14) 0px, transparent 45%),
+    radial-gradient(at 50% 100%, rgba(244, 63, 94, 0.10) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.95) 0px, transparent 100%);
+  background-attachment: fixed;
+}
+
+/* Light / Daylight Chill Mode overrides */
+body.vibe-daylight {
+  background-color: #F8FAFC;
+  color: #0F172A;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.10) 0px, transparent 45%),
+    radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.08) 0px, transparent 45%),
+    radial-gradient(at 50% 100%, rgba(251, 146, 60, 0.08) 0px, transparent 50%);
+}
+
+body.vibe-daylight .clean-card,
+body.vibe-daylight .glass-panel {
+  background-color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(139, 92, 246, 0.22);
+  color: #0F172A;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 0 1px 1px rgba(139, 92, 246, 0.12);
+}
+
+body.vibe-daylight .clean-card-elevated {
+  background-color: #FFFFFF;
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.12);
+}
+
+body.vibe-daylight .text-white,
+body.vibe-daylight .text-slate-100,
+body.vibe-daylight .text-ivory-50 {
+  color: #0F172A !important;
+}
+
+body.vibe-daylight .text-slate-200,
+body.vibe-daylight .text-slate-300,
+body.vibe-daylight .text-ivory-100,
+body.vibe-daylight .text-ivory-200 {
+  color: #334155 !important;
+}
+
+body.vibe-daylight .text-slate-400 {
+  color: #64748B !important;
+}
+
+body.vibe-daylight .bg-slate-900,
+body.vibe-daylight .bg-slate-950,
+body.vibe-daylight .bg-slate-900\/80,
+body.vibe-daylight .bg-slate-950\/80,
+body.vibe-daylight .bg-slate-950\/70,
+body.vibe-daylight .bg-slate-900\/90 {
+  background-color: rgba(241, 245, 249, 0.9) !important;
+}
+
+/* Casual, High-Engagement Frosted Glass Cards */
+.clean-card {
+  background-color: rgba(17, 24, 39, 0.82);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(139, 92, 246, 0.12);
+}
+
+.clean-card-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clean-card-hover:hover {
+  border-color: rgba(168, 85, 247, 0.55);
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.7), 0 0 25px rgba(139, 92, 246, 0.3);
+  transform: translateY(-3px) scale(1.008);
+}
+
+/* Glass Panel for Modals & Overlays */
+.glass-panel {
+  background-color: rgba(17, 24, 39, 0.92);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(139, 92, 246, 0.15);
+}
+
+/* Elevated Focus Glass Panel */
+.clean-card-elevated {
+  background-color: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.6), 0 0 25px rgba(245, 158, 11, 0.2);
+  border-radius: 1.25rem;
+}
+
+/* Vibrant Casual Text Gradients */
+.text-brand-gradient {
+  background: linear-gradient(135deg, #C084FC 0%, #38BDF8 50%, #F43F5E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gold-gradient {
+  background: linear-gradient(135deg, #FEF08A 0%, #FBBF24 50%, #F59E0B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-turquoise-gradient {
+  background: linear-gradient(135deg, #FFFFFF 0%, #38BDF8 50%, #06B6D4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-fun-gradient {
+  background: linear-gradient(135deg, #F472B6 0%, #A855F7 50%, #38BDF8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-fire-gradient {
+  background: linear-gradient(135deg, #F43F5E 0%, #FB923C 50%, #FBBF24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom Modern Casual Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0E1A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 9999px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8B5CF6;
+}
+
+/* Glowing Border Pulse */
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(139, 92, 246, 0.3); }
+  50% { border-color: rgba(6, 182, 212, 0.5); }
+}
+
+.animate-border-glow {
+  animation: borderGlow 4s ease-in-out infinite;
+}
+
+/* Quick Grab highlight badge */
+.quick-grab-badge {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(244, 63, 94, 0.2) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #FDE047;
+}
+
+/* Casual Interactive Sticker Effect */
+.sticker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sticker-badge:hover {
+  transform: scale(1.06) rotate(-2deg);
+}
